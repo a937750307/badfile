@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>坏文件 · 创建无法打开的文件</title>
+<style>
+  *,*::before,*::after{ box-sizing:border-box; margin:0; padding:0; }
+  :root{
+    --bg:#ffffff; --fg:#111111; --muted:#666666; --faint:#999999;
+    --line:#e8e8e8; --line-strong:#d0d0d0; --accent:#111111;
+  }
+  html{ -webkit-text-size-adjust:100%; }
+  body{
+    min-height:100vh; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue","PingFang SC","Microsoft YaHei",sans-serif;
+    font-size:14px; line-height:1.6; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+    display:flex; justify-content:center; padding:56px 20px 90px;
+  }
+  .wrap{ width:100%; max-width:720px; }
+  header{ margin-bottom:40px; }
+  header h1{ font-size:28px; font-weight:700; letter-spacing:.5px; }
+  header p{ color:var(--muted); font-size:13.5px; margin-top:8px; line-height:1.7; }
+  .card{ border:1px solid var(--line); padding:26px 26px 24px; margin-bottom:20px; }
+  .card h2{ font-size:12px; font-weight:600; color:var(--faint); letter-spacing:1px;
+            margin-bottom:20px; text-transform:uppercase; }
+  .field{ margin-bottom:18px; }
+  .field:last-child{ margin-bottom:0; }
+  .label{ display:block; font-size:12px; color:var(--muted); margin-bottom:7px; }
+  .label em{ font-style:normal; color:var(--faint); font-size:11.5px; margin-left:6px; }
+  .inline{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  input[type=text],input[type=number],select{
+    width:100%; background:#fff; border:1px solid var(--line-strong); color:var(--fg);
+    font-size:14px; font-family:inherit; padding:10px 12px; outline:none;
+    transition:border-color .15s; -webkit-appearance:none; appearance:none;
+  }
+  input:focus,select:focus{ border-color:var(--accent); }
+  select{ cursor:pointer;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6' stroke='%23888' stroke-width='1.6' fill='none' stroke-linecap='round'/></svg>");
+    background-repeat:no-repeat; background-position:right 12px center; padding-right:34px; }
+  .grid2{ display:grid; grid-template-columns:1fr 200px; gap:14px; }
+  @media (max-width:600px){ .grid2{ grid-template-columns:1fr; } }
+  .hint{ font-size:11.5px; color:var(--faint); margin-top:8px; }
+  .chips{ display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+  .chip{
+    background:#fff; border:1px solid var(--line-strong); color:#444; border-radius:999px;
+    padding:7px 15px; font-size:12.5px; font-family:inherit; cursor:pointer; transition:.15s;
+    user-select:none;
+  }
+  .chip:hover{ border-color:var(--accent); color:var(--fg); }
+  .summary{
+    margin-bottom:20px; padding:14px 16px; border:1px solid var(--line); font-size:13px; line-height:1.8;
+    color:#333; background:#fafafa;
+  }
+  .summary b{ color:var(--fg); }
+  .summary .warn{ display:block; margin-top:6px; color:#a06a00; }
+  .summary .save{ display:block; margin-top:4px; color:#555; }
+  .mono{ font-family:ui-monospace,SFMono-Regular,Consolas,"Courier New",monospace; }
+  .actions{ display:flex; gap:12px; align-items:center; }
+  .btn{ border:1px solid var(--accent); background:var(--accent); color:#fff; border-radius:8px;
+    padding:13px 20px; font-size:14px; font-weight:600; font-family:inherit; cursor:pointer;
+    transition:.15s; flex:1; letter-spacing:0.5px; }
+  .btn:hover:not(:disabled){ opacity:.88; }
+  .btn:disabled{ opacity:.5; cursor:not-allowed; }
+  .btn.ghost{ background:#fff; color:var(--fg); flex:0 0 auto; font-weight:500; }
+  .btn.ghost:hover:not(:disabled){ background:#f4f4f4; }
+  .bar{ height:8px; background:#f0f0f0; border-radius:999px; overflow:hidden; }
+  #barFill{ height:100%; width:0%; background:var(--accent); transition:width .15s; }
+  #progressInfo{ font-size:12.5px; color:var(--muted); margin-bottom:8px; font-variant-numeric:tabular-nums; }
+  #statusText{ font-size:13px; color:var(--fg); margin-top:12px; min-height:20px; }
+  #statusText.ok{ color:#1a7d1a; }
+  #statusText.err{ color:#c0271c; }
+  .info h3{ font-size:13.5px; margin:20px 0 8px; font-weight:600; }
+  .info h3:first-child{ margin-top:0; }
+  .info p,.info li{ font-size:13px; color:#555; line-height:1.85; }
+  .info ul{ list-style:none; margin-top:6px; }
+  .info li::before{ content:"·"; color:var(--accent); margin-right:6px; font-weight:700; }
+  .note{ margin-top:14px; padding:12px 14px; border:1px solid #f0e0c0; background:#fffbf0; font-size:12.5px; color:#8a6d2a; }
+  footer{ text-align:center; font-size:12px; color:var(--faint); margin-top:28px; line-height:1.9; }
+  .customBox{ display:none; margin-top:12px; }
+  .customBox.open{ display:block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>坏文件</h1>
+    <p>核心功能只有一个：创建**打不开的文件**。随机填充、结构破坏，图片/视频/文档/压缩包一律无法打开。<br>海量扩展名 · 任意大小 · 无上限 · Mac / PC 浏览器 100% 兼容。</p>
+  </header>
+
+  <div class="card">
+    <h2>生成设置</h2>
+
+    <div class="grid2">
+      <div class="field">
+        <label class="label" for="fName">文件名<em>不含扩展名</em></label>
+        <input id="fName" type="text" value="bad-file" spellcheck="false">
+      </div>
+      <div class="field">
+        <label class="label" for="fCount">数量<em>最多 100</em></label>
+        <input id="fCount" type="number" min="1" max="100" value="1">
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="label" for="fExt">扩展名<em><span id="extCount" class="mono">—</span> 种预设</em></label>
+      <div class="inline">
+        <select id="fExt" style="flex:1" class="mono"></select>
+        <button id="btnRandomExt" class="btn ghost" style="padding:9px 16px" title="随机一个扩展名">随机</button>
+      </div>
+      <label class="inline" style="margin-top:10px;cursor:pointer;font-size:12.5px;color:#555">
+        <input type="checkbox" id="useCustom"> 使用自定义扩展名
+      </label>
+      <div class="customBox" id="customBox">
+        <input id="fExtCustom" type="text" spellcheck="false" placeholder="例如：dat / xyz / mybad">
+        <div class="hint">去掉前导点号，可填任意后缀，仅用于命名，不影响生成内容。</div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="label" for="fSize">文件大小<em>无上限</em></label>
+      <div class="inline">
+        <input id="fSize" type="number" min="0" step="any" value="500" style="width:160px;flex:0 0 auto" class="mono">
+        <select id="fUnit" style="width:96px;flex:0 0 auto">
+          <option>B</option><option>KB</option>
+          <option>MB</option><option selected>KB</option><option>GB</option><option>TB</option><option>PB</option>
+        </select>
+      </div>
+      <div class="chips">
+        <span class="chip" data-v="1" data-u="MB">1 MB</span>
+        <span class="chip" data-v="5" data-u="KB">5 KB</span>
+        <span class="chip" data-v="50" data-u="MB">50 MB</span>
+        <span class="chip" data-v="00" data-u="MB">100 MB</span>
+        <span class="chip" data-v="1" data-u="GB">1 GB</span>
+        <span class="chip" data-v="5" data-u="GB">5 GB</span>
+        <span class="chip" data-v="20" data-u="GB">20 GB</span>
+      </div>
+    </div>
+
+    <div class="summary" id="summary"></div>
+
+    <div class="actions">
+      <button class="btn" id="btnGen">开始生成并下载</button>
+      <button class="btn ghost" id="btnStop" style="display:none">停止</button>
+    </div>
+
+    <div id="progressWrap" style="display:none; margin-top:18px">
+      <div id="progressInfo"></div>
+      <div class="bar"><div id="barFill"></div></div>
+      <div id="statusText"></div>
+    </div>
+  </div>
+
+  <div class="card info">
+    <h2>说明</h2>
+    <h3>为什么这些文件打不开？</h3>
+    <p>任何文件（图片、视频、Office 文档、压缩包……）都需要合法的“文件头 + 数据结构”才能被软件识别。本工具往文件里填充随机字节或无效内容，结构被彻底破坏，因此用任何软件打开都会提示“文件损坏 / 无法解析 / 格式无效”。</p>
+    <h3>兼容性。</h3>
+    <ul>
+      <li><b>Mac / PC / 现代浏览器</b>直接可用（Chrome、Edge、Safari、Firefox），纯前端、零网络请求、双击 html 即离线使用。</li>
+      <li>Chromium 系使用流式写入：1GB 到 1TB 都<b>不会先占满内存</b>，边生成边落盘。</li>
+      <li>Safari / Firefox 自动降级为内存模式，中小文件无压力；超大文件请留意内存。</li>
+      <li><b>批量</b>：数量大于 1 时按序号逐个下载（bad-file_001.pdf、bad-file_002.pdf…），自动补零，无需手动改名。</li>
+    </ul>
+    <h3>使用场景</h3>
+    <ul>
+      <li>测试下载站、校验服务、断点续传、文件监控对异常文件的容错能力</li>
+      <li>测试安全软件 / 病毒扫描对损坏样本的响应</li>
+      <li>前端开发、日志分析、教学演示（文件格式与 MIME 嗅探）</li>
+    </ul>
+    <div class="note">⚠️ 免责声明：本工具仅用于测试与学习。生成的“坏文件”请勿用于欺骗、诈骗或其他违法违规用途，由此产生的后果由使用者自行承担。</div>
+  </div>
+
+  <footer>纯前端单文件 · 无依赖 · 无网络请求 · 离线可用</footer>
+</div>
+
+<noscript>本站需要启用 JavaScript 才能工作。</noscript>
+
+<script>
+(function () {
+  'use strict';
+  var ABORT = new Error('aborted');
+
+  /* ---------------- 扩展名预设 ---------------- */
+  var EXT_GROUPS = [
+    ['文档', 'txt pdf doc docx xls xlsx ppt pptx wps odt ods ott rtf csv md epub pages numbers key'.split(' ')],
+    ['图片', 'jpg jpeg png gif bmp webp svg tiff tif ico eps raw cr2 nef arw rw2 psd heic heif 3ds max dwg dxf'.split(' ')],
+    ['音频', 'mp3 wav flac aac ogg m4a wma aiff opus amr'.split(' ')],
+    ['视频', 'mp4 mkv avi mov wmv flv webm 3gp mpg mpeg rm rmvb asf ogv m4v'.split(' ')],
+    ['压缩和镜像', 'zip rar 7z tar gz bz2 xz iso bin dmg jar cab alz arj lzh zst lz4'.split(' ')],
+    ['程序和系统', 'exe dll so dylib app apk deb rpm msi sys drv pyc class swf elf com scr ocx lnk'.split(' ')],
+    ['数据库', 'sql db mdb sqlite bak dmp trc'.split(' ')],
+    ['代码和文本', 'json xml yaml yml html htm js ts jsx tsx py java c cpp h hpp go rs rb php cs scala sh bat cmd ps1 vbs toml ini conf cfg properties log env lock'.split(' ')],
+    ['字体', 'ttf otf woff woff2 eot fnt'.split(' ')],
+    ['其他', 'pem key crt cer pfx vtt m3u8 vcf torrent ics eml ps ai aep vsd vsdx pub geo kmz dat enc pack cache tmp backup'.split(' ')]
+  ];
+  var flatExts = [];
+  var seen = {};
+  EXT_GROUPS.forEach(function (g) {
+    g[1].forEach(function (e) { if (!seen[e]) { seen[e] = 1; flatExts.push(e); } });
+  });
+
+  /* ---------------- DOM ---------------- */
+  var fName   = document.getElementById('fName');
+  var fCount  = document.getElementById('fCount');
+  var fExt    = document.getElementById('fExt');
+  var extCount = document.getElementById('extCount');
+  var useCustom = document.getElementById('useCustom');
+  var customBox = document.getElementById('customBox');
+  var fExtCustom = document.getElementById('fExtCustom');
+  var fSize   = document.getElementById('fSize');
+  var fUnit   = document.getElementById('fUnit');
+  var summaryEl = document.getElementById('summary');
+  var btnGen  = document.getElementById('btnGen');
+  var btnStop = document.getElementById('btnStop');
+  var progressWrap = document.getElementById('progressWrap');
+  var progressInfo = document.getElementById('progressInfo');
+  var barFill = document.getElementById('barFill');
+  var statusText = document.getElementById('statusText');
+
+  /* ---------------- 初始化扩展名 ---------------- */
+  extCount.textContent = flatExts.length;
+  fExt.innerHTML = EXT_GROUPS.map(function (g) {
+    return '<optgroup label="' + g[0] + '">' +
+           g[1].map(function (e) { return '<option value="' + e + '">' + e + '</option>'; }).join('') +
+           '</optgroup>';
+  }).join('');
+  fExt.value = 'pdf';
+
+  document.getElementById('btnRandomExt').addEventListener('click', function () {
+    fExt.value = flatExts[(Math.random() * flatExts.length) | 0];
+  });
+  useCustom.addEventListener('change', function () {
+    customBox.classList.toggle('open', useCustom.checked);
+  });
+  document.querySelectorAll('.chip').forEach(function (c) {
+    c.addEventListener('click', function () {
+      fSize.value = c.dataset.v;
+      fUnit.value = c.dataset.u;
+      refreshSummary();
+    });
+  });
+  [fName, fCount, fSize, fUnit, fExt, useCustom, fExtCustom].forEach(function (el) {
+    el.addEventListener('input', refreshSummary);
+    el.addEventListener('change', refreshSummary);
+  });
+
+  /* ---------------- 工具函数 ---------------- */
+  function fmt(bytes) {
+    if (!isFinite(bytes) || bytes <= 0) return '0 B';
+    var u = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB'];
+    var i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), u.length - 1);
+    var v = bytes / Math.pow(1024, i);
+    var s = (v >= 100 || i === 0) ? String(Math.round(v)) : v.toFixed(v >= 10 ? 1 : 2);
+    return s + ' ' + u[i];
+  }
+  function fmtSpeed(b) {
+    if (!isFinite(b) || b <= 0) return '- MB/s';
+    var v = b / 1048576;
+    return (v >= 100 ? Math.round(v) : v.toFixed(1)) + ' MB/s';
+  }
+  function fmtDuration(sec) {
+    if (!isFinite(sec) || sec <= 0) return '--';
+    sec = Math.round(sec);
+    if (sec < 60) return sec + ' 秒';
+    if (sec < 3600) return Math.floor(sec / 60) + ' 分 ' + (sec % 60) + '秒';
+    return Math.floor(sec / 3600) + ' 时 ' + Math.floor((sec % 3600) / 6) + ' 分';
+  }
+  function getExt() {
+    var raw = useCustom.checked
+      ? fExtCustom.value.trim().replace(/^\.+/, '').replace(/[\\/:*?"<>|]/g, '')
+      : fExt.value;
+    return raw || 'bin';
+  }
+
+  function updateSummary() {
+    var count = Math.max(1, Math.min(100, parseInt(fCount.value, 10) || 1));
+    var n = parseFloat(fSize.value);
+    var mult = { B:1, KB:1024, MB:1048576, GB:1073741824, TB:1.099511627776e12, PB:1.125899906842624e15 }[fUnit.value];
+    var bytes = isFinite(n) && n > 0 ? Math.floor(n * mult) : 0;
+    var name = (fName.value.trim() || 'bad-file').replace(/[\\/:*?"<>|]/g, '_') + '.' + getExt();
+
+    var baseN = (fName.value.trim() || 'bad-file').replace(/[\\/:*?"<>|]/g, '_');
+    var ext = getExt();
+    var name = baseN + '.' + ext;
+
+    var html = '将创建 <b>' + count + '</b> 个文件：<span class="mono">' + withIndex(baseN, ext, count > 1 ? 1 : 0, count > 1) + '</span>';
+    if (count > 1) {
+      html += '、<span class="mono">' + withIndex(baseN, ext, 2, true) + '</span>';
+      if (count > 2) html += ' … <span class="mono">' + withIndex(baseN, ext, count, true) + '</span>';
+    }
+    html += '<br>每个 <b>' + fmt(bytes) + '</b>，合计 <b>' + fmt(bytes * count) + '</b>';
+    html += '<span class="save">保存方式：' +
+      (count > 1 ? '批量生成全部带三位序号（bad-file_001.pdf、bad-file_002.pdf…），逐个下载，不打包。' : '弹窗保存为 <span class="mono">' + name + '</span>') +
+      '</span>';
+
+    var warn = '';
+    if (count > 1 && !window.showDirectoryPicker) {
+      warn += '<span class="warn">⚠️ 当前浏览器不支持目录选择器，将逐个弹窗保存（共 ' + count + ' 次），请逐一操作</span>';
+    }
+    if (count > 1 && bytes >= 1024 * 1024 * 512) {
+      warn += '<span class="warn">⚠️ 单文件超过512MB 会先在内存中构建，可能卡顿；超大文件建议改回单个下载</span>';
+    }
+    summaryEl.innerHTML = html + warn;
+    btnGen.textContent = count > 1 ? '批量生成并下载（' + count + ' 个）' : '开始生成并下载';
+    btnGen.title = count > 1 ? '批量生成，每个文件自动带三位序号：bad-file_001.pdf、bad-file_002.pdf…' : '生成 1 个坏文件并保存';
+  }
+  function refreshSummary() { try { updateSummary(); } catch (e) {} }
+  refreshSummary();
+
+  /* ---------------- 填充函数 ---------------- */
+  function fillRandom(buf) { if (window.crypto && crypto.getRandomValues) crypto.getRandomValues(buf); else fillFast(buf); }
+  function fillFast(buf) {
+    var x = 0x12345678 >>> 0;
+    for (var i = 0; i < buf.length; i += 4) {
+      x ^= x << 13; x >>>= 0; x ^= x >>> 17; x ^= x << 5; x >>>= 0;
+      var v = x >>> 0;
+      buf[i] = v & 255; buf[i+1] = (v >>> 8) & 255; buf[i+2] = (v>>>16) & 255; buf[i+3] = (v>>>24) & 255;
+    }
+  }
+  var TEXT_CHARS = '!#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abcdefghijklmnopqrstuvwxyz{}~';
+  function fillText(buf) {
+    for (var i = 0; i < buf.length; i++) buf[i] = TEXT_CHARS.charCodeAt((Math.random() * TEXT_CHARS.length) | 0);
+  }
+  function makeFiller(mode) {
+    if (mode === 'fast') return fillFast;
+    if (mode === 'ff') return function (b) { b.fill(255); };
+    if (mode === 'zero') return function (b) { b.fill(0); };
+    return fillText;
+  }
+
+  /* ---------------- 流式分块生成器 ---------------- */
+  var CHUNK = 64 * 1024 * 1024;
+  async function* chunkGen(size, fill, tryAbort) {
+    var buf = new Uint8Array(CHUNK);
+    var left = Math.max(0, Math.floor(size));
+    while (left > 0) {
+      if (tryAbort && tryAbort()) throw ABORT;
+      var len = Math.min(CHUNK, left);
+      fill(buf.subarray(0, len));
+      yield buf.slice(0, len);
+      left -= len;
+      await new Promise(function (r) { setTimeout(r, 0); });
+    }
+  }
+  async function* countGen(gen, onBytes) {
+    for await (var chunk of gen) { onBytes(chunk.length); yield chunk; }
+  }
+
+  /* ---------------- 保存：单文件 / 批量逐个下载 / 内存降级 ---------------- */
+  function withIndex(base, ext, i, batch) {
+    if (!batch) return base + '.' + ext;
+    var num = String(i);
+    while (num.length < 3) num = '0' + num;
+    return base + '_' + num + '.' + ext;
+  }
+  async function saveOne(filename, size, fill, hook) {
+    var handle = null;
+    if (hook.dirHandle) {
+      var fh = null;
+      try {
+        fh = await hook.dirHandle.getFileHandle(filename);
+      } catch (e) {
+        hook.log('写入目录的文件失败：' + (e && e.message || e));
+      }
+      if (fh) {
+        var writable = await fh.createWritable();
+        var sent = 0;
+        try {
+          for await (var chunk of countGen(chunkGen(size, fill, hook.getAbort), function (n) { sent += n; hook.onTick(sent); })) {
+            await writable.write(chunk);
+          }
+          await writable.close();
+          return 'ok';
+        } catch (e) {
+          if (e === ABORT) { try { await writable.abort(); } catch (x) {} return 'aborted'; }
+          try { await writable.close(); } catch (x) {}
+          throw e;
+        }
+      }
+    }
+    if (window.showSaveFilePicker) {
+      try { handle = await window.showSaveFilePicker({ suggestedName: filename }); }
+      catch (e) {
+        if (e && e.name === 'AbortError') return 'aborted';
+        hook.log('保存对话框异常，尝试内存模式');
+      }
+      if (handle) {
+        var w2 = await handle.createWritable();
+        var sent1 = 0;
+        try {
+          for await (var c1 of countGen(chunkGen(size, fill, hook.getAbort), function (n) { sent1 += n; hook.onTick(sent1); })) {
+            await w2.write(c1);
+          }
+          await w2.close();
+          return 'ok';
+        } catch (e) {
+          if (e === ABORT) { try { await w2.abort(); } catch (x) {} return 'aborted'; }
+          try { await w2.close(); } catch (x) {}
+          hook.log('流式写入失败（' + (e && e.message || e) + '），改用内存模式');
+        }
+      }
+    }
+    var parts = [], aborted = false, bytes2 = 0;
+    try {
+      for await (var cc of countGen(chunkGen(size, fill, hook.getAbort), function (n) { bytes2 += n; hook.onTick(bytes2); })) {
+        parts.push(cc);
+      }
+    } catch (e) { if (e === ABORT) { aborted = true; } else { throw e; } }
+    if (aborted) return 'aborted';
+    var url = URL.createObjectURL(new Blob(parts, { type: 'application/octet-stream' }));
+    var a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 10*60*1000);
+    return 'ok';
+  }
+
+  /* ---------------- 主流程 ---------------- */
+  var running = false;
+  var abortFlag = false;
+  btnGen.addEventListener('click', function () { generate(); });
+  btnStop.addEventListener('click', function () { abortFlag = true; });
+  [fName, fCount, fSize].forEach(function (el) {
+    el.addEventListener('keydown', function (e) { if (e.key === 'Enter') generate(); });
+  });
+
+  async function generate() {
+    if (running) return;
+    var count = Math.max(1, Math.min(100, parseInt(fCount.value, 10) || 1));
+    var n = parseFloat(fSize.value);
+    var mult = { B:1, KB:1024, MB:1048576, GB:1073741824, TB:1.099511627776e12, PB:1.125899906842624e15 }[fUnit.value];
+    if (!isFinite(n) || n <= 0) { statusText.textContent = '文件大小必须是一个大于 0 的数字'; statusText.className = 'err'; return; }
+    var bytes = Math.floor(n * mult);
+    var base = (fName.value.trim() || 'bad-file').replace(/[\\/:*?"<>|]/g, '_');
+    var ext = getExt();
+
+    running = true; abortFlag = false;
+    btnGen.disabled = true;
+    btnStop.style.display = 'inline-block';
+    progressWrap.style.display = 'block';
+    barFill.style.width = '0%'; statusText.textContent = ''; statusText.className = '';
+
+    var fill = makeFiller();
+    var totalAll = bytes * count;
+    var globalCur = 0, speed = 0, lastBytes = 0, lastTime = 0;
+    var finished = 0, aborted = false;
+
+    function rawTick(cur) {
+      var now = performance.now();
+      if (lastTime && now - lastTime >= 150) {
+        speed = (cur - lastBytes) / Math.max((now - lastTime) / 1000, 0.0001);
+        lastBytes = cur; lastTime = now;
+      } else if (!lastTime) { lastBytes = cur; lastTime = now; }
+      var pct = totalAll ? Math.min(100, (cur / totalAll) * 100) : 0;
+      barFill.style.width = pct.toFixed(1) + '%';
+      var eta = speed > 0 ? (totalAll - cur) / speed : NaN;
+      progressInfo.textContent = '已写入 ' + fmt(cur) + ' / ' + fmt(totalAll) + ' · ' +
+        pct.toFixed(1) + '% · ' + fmtSpeed(speed) + ' · 剩余 ' + fmtDuration(eta);
+      statusText.textContent = '生成中 · 已完成 ' + fileCompleted + '/' + count + ' 个';
+    }
+
+    var fileCompleted = 0;
+    var dirHandle = null;
+
+    // 批量模式：不弹目录选择器，全部以三位序号逐个下载（不打包）
+    if (count > 1 && window.showDirectoryPicker) {
+      statusText.textContent = '将在浏览器地址栏逐个下载 ' + count + ' 个带序号文件';
+    }
+
+    function finish() {
+      running = false;
+      btnGen.disabled = false;
+      progressWrap.style.display = 'none';
+      btnStop.style.display = 'none';
+      barFill.style.width = '100%';
+      statusText.className = aborted ? 'err' : 'ok';
+      statusText.textContent = aborted ? (finished ? '已停止，完成' + finished + ' 个' : '已停止') :
+        '✅ 创建 ' + count + ' 个坏文件，共 ' + fmt(totalAll) + '。请查看下载目录。';
+    }
+
+    for (var i = 1; i <= count; i++) {
+      if (aborted) break;
+      var hook = {
+        getAbort: function () { return abortFlag; },
+        onTick: function (cur) { rawTick((i-1) * bytes + cur); },
+        log: function (msg) { statusText.textContent = msg; },
+        dirHandle: dirHandle,
+        index: i,
+      };
+      var ok = await saveOne(withIndex(base, ext, i, count > 1), bytes, fill, hook);
+      if (ok === 'aborted') { aborted = true; break; }
+      finished++;
+      fileCompleted++;
+    }
+
+    finish();
+  }
+
+  /* 兜底：太旧的浏览器无法工作 */
+  if (!window.crypto) {
+    statusText.textContent = '当前浏览器过旧，无法使用。请升级到最新版 Chrome / Edge / Safari / Firefox。';
+    btnGen.disabled = true;
+  }
+})();
+</script>
+</body>
+</html>
