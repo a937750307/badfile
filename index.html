@@ -78,6 +78,13 @@
   .info li::before{ content:"·"; color:var(--accent); margin-right:6px; font-weight:700; }
   .note{ margin-top:14px; padding:12px 14px; border:1px solid #f0e0c0; background:#fffbf0; font-size:12.5px; color:#8a6d2a; }
   footer{ text-align:center; font-size:12px; color:var(--faint); margin-top:28px; line-height:1.9; }
+  footer .footTech{ margin-bottom:10px; color:var(--faint); }
+  footer .footBytes{ display:flex; align-items:center; justify-content:center; gap:24px; flex-wrap:nowrap; }
+  footer .footBytes .mark{ color:#c0271c; font-weight:600; }
+  footer .footBytes a{ color:#000000; text-decoration:none; white-space:nowrap; }
+  footer .footBytes a:hover{ color:#000000; }
+  footer .footBytes .ico{ width:15px; height:15px; border:0; vertical-align:-2px; margin-right:5px; display:inline-block; }
+  @media (max-width:600px){ footer .footBytes{ flex-direction:column; gap:7px; line-height:1.5; } }
   .customBox{ display:none; margin-top:12px; }
   .customBox.open{ display:block; }
 </style>
@@ -86,8 +93,8 @@
 <div class="wrap">
 
   <header>
-    <h1>坏文件</h1>
-    <p>核心功能只有一个：创建**打不开的文件**。随机填充、结构破坏，图片/视频/文档/压缩包一律无法打开。<br>海量扩展名 · 任意大小 · 无上限 · Mac / PC 浏览器 100% 兼容。</p>
+    <h1>创建“坏文件”</h1>
+    <p>核心功能只有一个：创建**打不开的文件**。创建图片/视频/文档/压缩包，使其一律无法打开。<br>支持海量扩展名 · 任意大小 · 无上限 · Mac / PC 浏览器 100% 兼容。</p>
   </header>
 
   <div class="card">
@@ -173,7 +180,14 @@
     <div class="note">⚠️ 免责声明：本工具仅用于测试与学习。生成的“坏文件”请勿用于欺骗、诈骗或其他违法违规用途，由此产生的后果由使用者自行承担。</div>
   </div>
 
-  <footer>纯前端单文件 · 无依赖 · 无网络请求 · 离线可用</footer>
+  <footer>
+    <div class="footTech">纯前端单文件 · 无依赖 · 无网络请求 · 离线可用</div>
+    <div class="footBytes">
+      <span class="mark">本站内容仅供学习和交流，非商业用途</span>
+      <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">浙ICP备2025187466号</a>
+      <a href="https://www.beian.gov.cn/portal/registerSystemInfo?recordcode=33030402001483" target="_blank" rel="noopener noreferrer"><img src="https://www.937788.xyz/gonganbeian.png" alt="公网备案" class="ico">浙公网安备33030402001483号</a>
+    </div>
+  </footer>
 </div>
 
 <noscript>本站需要启用 JavaScript 才能工作。</noscript>
@@ -284,7 +298,6 @@
 
     var baseN = (fName.value.trim() || 'bad-file').replace(/[\\/:*?"<>|]/g, '_');
     var ext = getExt();
-    var name = baseN + '.' + ext;
 
     var html = '将创建 <b>' + count + '</b> 个文件：<span class="mono">' + withIndex(baseN, ext, count > 1 ? 1 : 0, count > 1) + '</span>';
     if (count > 1) {
